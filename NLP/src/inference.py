@@ -70,7 +70,7 @@ def predict_ner_labels(sentence, model, tokenizer, device, print_pairs=False):
         tokens, predicted_labels)
     
     if print_pairs:
-        for token, label in final_labels:
+        for token, label in zip(final_tokens, final_labels):
             print(f"{token}: {id2label[label]}")
 
     return final_tokens, final_labels
