@@ -195,6 +195,6 @@ def convert_to_bert_format(sentence, entities, tokenizer):
                                      labels, entity_label, tokenizer)
         start = entity_end
 
-    tokenize_and_label_regular(sentence[start:], tokens, labels)
+    tokenize_and_label_regular(sentence[start:], tokens, labels, tokenizer)
     return (tokens, labels, sentence)
 
