@@ -41,7 +41,7 @@ training_args = TrainingArguments(
     learning_rate=2e-5,
     per_device_train_batch_size=64,
     per_device_eval_batch_size=64,
-    num_train_epochs=3,
+    num_train_epochs=10,
     weight_decay=0.01,
     save_total_limit=2,
     report_to="none",
@@ -68,7 +68,7 @@ class CustomTrainer(Trainer):
             return_dict=True)
         logits = outputs.get("logits")
         loss = compute_loss_with_class_weights(logits, labels,
-                                               model, class_weights)
+                                               class_weights)
         return (loss, outputs) if return_outputs else loss
 
 

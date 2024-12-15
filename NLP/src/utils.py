@@ -136,13 +136,13 @@ def get_data_collator(tokenizer):
     return DataCollatorForTokenClassification(tokenizer=tokenizer)
 
 
-def compute_loss_with_class_weights(outputs, labels, model, class_weights):
+def compute_loss_with_class_weights(outputs, labels, class_weights):
     """
     Custom loss function that applies class weights during training.
     """
     loss_fct = torch.nn.CrossEntropyLoss(
         weight=class_weights.to(outputs.device), ignore_index=-100)
     
-    return loss_fct(outputs.view(-1, model.config.num_labels), labels.view(-1))
+    return loss_fct(outputs.view(-1, 5), labels.view(-1))
 
 
