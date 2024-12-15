@@ -1,8 +1,8 @@
 import torch
 from transformers import (BertForTokenClassification, BertTokenizerFast,
                           Trainer, TrainingArguments)
-from utils import (JSONDataset, compute_loss_with_class_weights,
-                   compute_class_weights, get_data_collator,
+from utils import (JSONDataset, compute_loss,
+                   get_data_collator,
                    compute_metrics)
 
 labels = ["O", "B-MOUNTAIN", "I-MOUNTAIN", "B-ELEVATION", "I-ELEVATION"]
@@ -21,8 +21,6 @@ val_file = "../datasets/val_dataset.json"
 # Dataset Class (defined earlier)
 train_dataset = JSONDataset(train_file, tokenizer, label2id, max_len=256)
 val_dataset = JSONDataset(val_file, tokenizer, label2id, max_len=256)
-
-class_weights = compute_class_weights(train_dataset)
 
 model = BertForTokenClassification.from_pretrained(
     model_name,
@@ -67,8 +65,7 @@ class CustomTrainer(Trainer):
             attention_mask=attention_mask,
             return_dict=True)
         logits = outputs.get("logits")
-        loss = compute_loss_with_class_weights(logits, labels,
-                                               class_weights)
+        loss = compute_loss(logits, labels)
         return (loss, outputs) if return_outputs else loss
 
 
