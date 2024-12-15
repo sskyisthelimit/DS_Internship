@@ -6,6 +6,8 @@ from sklearn.metrics import (precision_score,
 import numpy as np
 import json
 
+from inference import label2id
+
 
 class JSONDataset(Dataset):
     def __init__(self, json_file, tokenizer, label2id, max_len=256):
@@ -145,4 +147,54 @@ def compute_loss_with_class_weights(outputs, labels, class_weights):
     
     return loss_fct(outputs.view(-1, 5), labels.view(-1))
 
+
+def tokenize_and_label_regular(sentence, tokens, labels, tokenizer):
+    tokenized_sentence = tokenizer(sentence.strip().split(),
+                                   return_tensors="pt",
+                                   is_split_into_words=True)
+    tokenized_sentence = tokenizer.convert_ids_to_tokens(
+        tokenized_sentence["input_ids"].squeeze().tolist())
+
+    tokenized_sentence = [tok for tok in tokenized_sentence if tok not in ['[CLS]', '[SEP]']]
+
+    tokens.extend(tokenized_sentence)
+    labels.extend([int(label2id["O"])] * len(tokenized_sentence))
+
+
+def tokenize_and_label_elevation(string, tokens, labels,
+                                 annot_label, tokenizer):
+    
+    tokenized_entity = tokenizer(string.strip().split(),
+                                 return_tensors="pt", is_split_into_words=True)
+    tokenized_entity = tokenizer.convert_ids_to_tokens(
+       tokenized_entity["input_ids"].squeeze().tolist())
+    for i, token in enumerate(tokenized_entity):
+        if token not in ['[CLS]', '[SEP]']:
+            if token in {"'s", ",", "."}:
+                tokens.append(token)
+                labels.append(int(label2id["O"]))
+            else:
+                tokens.append(token)
+                labels.append(
+                    int(label2id[annot_label]) if i == 0 else int(label2id[annot_label]))
+
+
+def convert_to_bert_format(sentence, entities, tokenizer):
+    start = 0
+    tokens = []
+    labels = []
+    for entity in entities:
+        entity_start = entity[0]
+        entity_end = entity[1]
+        entity_label = entity[2]
+
+        tokenize_and_label_regular(sentence[start:entity_start],
+                                   tokens, labels, tokenizer)
+        
+        tokenize_and_label_elevation(sentence[entity_start:entity_end], tokens,
+                                     labels, entity_label, tokenizer)
+        start = entity_end
+
+    tokenize_and_label_regular(sentence[start:], tokens, labels)
+    return (tokens, labels, sentence)
 
