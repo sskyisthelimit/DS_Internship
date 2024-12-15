@@ -84,17 +84,14 @@ def compute_metrics(pred):
     flat_labels = [l for labels in true_labels for l in labels]
 
     # Compute metrics
-    precision = precision_score(flat_labels,
-                                flat_predictions,
-                                average='macro', zero_division=0)
+    precision = precision_score(flat_labels, flat_predictions,
+                                average="weighted", zero_division=0)
     
-    recall = recall_score(flat_labels,
-                          flat_predictions,
-                          average='macro' ,zero_division=0)
+    recall = recall_score(flat_labels, flat_predictions,
+                          average="weighted", zero_division=0)
     
-    f1 = f1_score(flat_labels,
-                  flat_predictions,
-                  average='macro', zero_division=0)
+    f1 = f1_score(flat_labels, flat_predictions,
+                  average="weighted", zero_division=0)
     
     accuracy = accuracy_score(flat_labels, flat_predictions)
 
@@ -104,6 +101,26 @@ def compute_metrics(pred):
         "recall": recall,
         "f1": f1
     }
+
+
+def compute_class_weights(dataset):
+    """
+    Compute class weights based on the class frequencies in the dataset.
+    This will calculate weights for each class: ["O", "B-MOUNTAIN", "I-MOUNTAIN", "B-ELEVATION", "I-ELEVATION"].
+    """
+    label_counts = [0, 0, 0, 0, 0]  # Assuming labels: ["O", "B-MOUNTAIN", "I-MOUNTAIN", "B-ELEVATION", "I-ELEVATION"]
+
+    for example in dataset:  # Use the training set to calculate class frequencies
+        labels = example['labels']
+        for label in labels:
+            if label != -100:  # Skip padded tokens
+                label_counts[label] += 1
+
+    total_labels = sum(label_counts)
+    class_weights = [total_labels / count for count in label_counts]
+    class_weights = torch.tensor(class_weights, dtype=torch.float32)
+
+    return class_weights
 
 
 def get_data_collator(tokenizer):
@@ -119,11 +136,12 @@ def get_data_collator(tokenizer):
     return DataCollatorForTokenClassification(tokenizer=tokenizer)
 
 
-def compute_loss(outputs, labels):
+def compute_loss_with_class_weights(outputs, labels, class_weights):
     """
     Custom loss function that applies class weights during training.
     """
-    loss_fct = torch.nn.CrossEntropyLoss(ignore_index=-100)
+    loss_fct = torch.nn.CrossEntropyLoss(
+        weight=class_weights.to(outputs.device), ignore_index=-100)
     
     return loss_fct(outputs.view(-1, 5), labels.view(-1))
 
