@@ -1,7 +1,5 @@
 import torch
-from transformers import (BertForTokenClassification, BertTokenizerFast,
-                          Trainer, TrainingArguments,
-                          DataCollatorForTokenClassification)
+from transformers import (DataCollatorForTokenClassification)
 from torch.utils.data import Dataset
 from sklearn.metrics import (precision_score,
                              recall_score, f1_score, accuracy_score)
@@ -138,7 +136,7 @@ def get_data_collator(tokenizer):
     return DataCollatorForTokenClassification(tokenizer=tokenizer)
 
 
-def compute_loss_with_class_weights(outputs, labels):
+def compute_loss_with_class_weights(outputs, labels, model, class_weights):
     """
     Custom loss function that applies class weights during training.
     """
@@ -148,15 +146,3 @@ def compute_loss_with_class_weights(outputs, labels):
     return loss_fct(outputs.view(-1, model.config.num_labels), labels.view(-1))
 
 
-class CustomTrainer(Trainer):
-    def compute_loss(self, model, inputs, return_outputs=False):
-        labels = inputs.get("labels")
-        input_ids = inputs.get("input_ids")
-        attention_mask = inputs.get("attention_mask")
-        outputs = model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            return_dict=True)
-        logits = outputs.get("logits")
-        loss = compute_loss_with_class_weights(logits, labels)
-        return (loss, outputs) if return_outputs else loss

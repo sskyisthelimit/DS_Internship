@@ -1,7 +1,6 @@
 import torch
 from transformers import (BertForTokenClassification, BertTokenizerFast,
-                          Trainer, TrainingArguments,
-                          )
+                          Trainer, TrainingArguments)
 from utils import (JSONDataset, compute_loss_with_class_weights,
                    compute_class_weights, get_data_collator,
                    compute_metrics)
@@ -11,26 +10,12 @@ label2id = {label: idx for idx, label in enumerate(labels)}
 id2label = {idx: label for label, idx in label2id.items()}
 
 
-class CustomTrainer(Trainer):
-    def compute_loss(self, model, inputs, return_outputs=False):
-        labels = inputs.get("labels")
-        input_ids = inputs.get("input_ids")
-        attention_mask = inputs.get("attention_mask")
-        outputs = model(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            return_dict=True)
-        logits = outputs.get("logits")
-        loss = compute_loss_with_class_weights(logits, labels)
-        return (loss, outputs) if return_outputs else loss
-
-
 # Define model and tokenizer
 model_name = "bert-base-cased"
 tokenizer = BertTokenizerFast.from_pretrained(model_name)
 # File paths
-train_file = "/kaggle/input/mountains-ner-dataset/training_dataset.json"
-val_file = "/kaggle/input/mountains-ner-dataset/val_dataset.json"
+train_file = "../datasets/training_dataset.json"
+val_file = "../datasets/val_dataset.json"
 
 
 # Dataset Class (defined earlier)
@@ -71,6 +56,22 @@ training_args = TrainingArguments(
 
 data_collator = get_data_collator(tokenizer)
 
+
+class CustomTrainer(Trainer):
+    def compute_loss(self, model, inputs, return_outputs=False):
+        labels = inputs.get("labels")
+        input_ids = inputs.get("input_ids")
+        attention_mask = inputs.get("attention_mask")
+        outputs = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            return_dict=True)
+        logits = outputs.get("logits")
+        loss = compute_loss_with_class_weights(logits, labels,
+                                               model, class_weights)
+        return (loss, outputs) if return_outputs else loss
+
+
 trainer = CustomTrainer(
     model=model,
     args=training_args,
@@ -86,7 +87,9 @@ metrics = trainer.evaluate()
 
 model_save_path = "./bert_model"
 tokenizer_save_path = "./bert_tokenizer"
+
 model.save_pretrained(model_save_path)
 tokenizer.save_pretrained(tokenizer_save_path)
 
-
+model.push_to_hub("sskyisthelimit/mount-ner-model")
+tokenizer.push_to_hub("sskyisthelimit/mount-ner-model")
