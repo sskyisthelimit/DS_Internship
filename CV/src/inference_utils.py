@@ -68,7 +68,7 @@ def split_image(image, n, save_crops=False, saving_path=None):
             coordinates = {'start_h': start_h, 'end_h': end_h, 'start_w': start_w, 'end_w': end_w}
             key = f'cropped_{i}_{j}'
             cropped_images[key] = {'coordinates': coordinates, 'image': cropped}
-            filename = "_" + str(start_h) + "_" str(end_h) + "_" + str(start_w) + "_" str(end_w) + ".png"
+            filename = "_" + str(start_h) + "_" + str(end_h) + "_" + str(start_w) + "_" + str(end_w) + ".png"
             filepath = os.path.join(saving_path, filename)
             save_image(cropped, filepath)
 
