@@ -252,7 +252,8 @@ def loftr_matcher(path_img_1, path_img_2, matcher, w, h, n_pair, crp_w, crp_h, d
             matcher,
             [crp_1_img[dict_keys[0]]['image'].size()[3], crp_1_img[dict_keys[0]]['image'].size()[2]],
             crp_1_img[dict_keys[pair_index]]['coordinates']['start_w'],
-            crp_1_img[dict_keys[pair_index]]['coordinates']['start_h']
+            crp_1_img[dict_keys[pair_index]]['coordinates']['start_h'],
+            device
         )
         inliers.append(pair_inliers)
         mkpts0.append(pair_mkpts0)
