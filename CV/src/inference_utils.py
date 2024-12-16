@@ -123,7 +123,7 @@ def lightglue_matcher(path_img_1, path_img_2, matcher, extractor, w, h, n_pair, 
         plt.close(fig)
 
 
-def match_cutImg(tensor_img1, tensor_img2, new_w, new_h, matcher, old_size, start_w, start_h, device):
+def match_loftr_crop(tensor_img1, tensor_img2, new_w, new_h, matcher, old_size, start_w, start_h, device):
     cut_img1 = resize_torch_cutImage(tensor_img1, new_w, new_h)
     cut_img2 = resize_torch_cutImage(tensor_img2, new_w, new_h)
 
@@ -156,7 +156,7 @@ def match_cutImg(tensor_img1, tensor_img2, new_w, new_h, matcher, old_size, star
             inliers)
 
 
-def matcher(path_img_1, path_img_2, matcher, w, h, n_pair, crp_w, crp_h, device):
+def loftr_matcher(path_img_1, path_img_2, matcher, w, h, n_pair, crp_w, crp_h, device):
     # n_pair
     # Load images
     img1 = load_torch_image(path_img_1, w, h)
@@ -179,7 +179,7 @@ def matcher(path_img_1, path_img_2, matcher, w, h, n_pair, crp_w, crp_h, device)
     inliers, mkpts0, mkpts1 = [], [], []
     
     for pair_index in range(0, 6):
-        pair_mkpts0, pair_mkpts1, pair_inliers = match_cutImg(
+        pair_mkpts0, pair_mkpts1, pair_inliers = match_loftr_crop(
             crp_1_img[dict_keys[pair_index]]['image'],
             crp_2_img[dict_keys[pair_index]]['image'],
             crp_w,
