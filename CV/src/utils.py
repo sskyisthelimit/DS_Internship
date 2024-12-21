@@ -330,7 +330,19 @@ def split_image_and_save(image, crop_h, crop_w, save_crops=False, saving_path=No
 
 
 def load_torch_image(fname):
-    image = cv2.cvtColor(cv2.imread(fname), cv2.COLOR_BGR2RGB)
-    transform = T.ToTensor()
-    
+    image = cv2.imread(fname)
+    if image is None:
+        raise FileNotFoundError(f"Image file '{fname}' not found or unable to read.")
+
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+    # Ensure image is uint8
+    if image.dtype != 'uint8':
+        image = image.astype('uint8')
+
+    transform = T.Compose([
+        T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
+
     return transform(image)
