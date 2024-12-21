@@ -14,9 +14,14 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import torch.nn.functional as F
 import torchvision.transforms as T
+import torchvision.transforms.functional as F
 import math
 
-from inference_utils import save_image
+
+def save_image(image, path):
+    image_pil = F.to_pil_image(image)
+    image_pil.save(path)
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
