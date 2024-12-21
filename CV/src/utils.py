@@ -4,6 +4,7 @@ import logging
 import time
 
 import cv2
+import torch
 from datetime import datetime, timedelta
 from collections import namedtuple
 from types import MappingProxyType
@@ -14,13 +15,8 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import torch.nn.functional as F
 import torchvision.transforms as T
-import torchvision.transforms.functional as F
+from torchvision.transforms.functional import to_pil_image
 import math
-
-
-def save_image(image, path):
-    image_pil = F.to_pil_image(image)
-    image_pil.save(path)
 
 
 logger = logging.getLogger(__name__)
@@ -302,8 +298,9 @@ class Sentinel2Downloader:
         return results
 
 
-def split_image_and_save(image, crop_h, crop_w, save_crops=False, saving_path=None):
-    _, c, h, w = image.size()
+def split_image_and_save(image, crop_h, crop_w, save_crops=False,
+                         saving_path=None):
+    c, h, w = image.size()
 
     n_h = math.ceil(h / crop_h)
     n_w = math.ceil(w / crop_w)
@@ -312,7 +309,7 @@ def split_image_and_save(image, crop_h, crop_w, save_crops=False, saving_path=No
     pad_w = n_w * crop_w - w
 
     padded = F.pad(image, (0, pad_w, 0, pad_h), "constant", 0)
-    
+
     del image
 
     for i in range(n_h):
@@ -322,12 +319,14 @@ def split_image_and_save(image, crop_h, crop_w, save_crops=False, saving_path=No
             start_w = j * crop_w
             end_w = (j + 1) * crop_w
 
-            cropped = padded[:, :, start_h:end_h, start_w:end_w]
+            cropped = padded[:, start_h:end_h, start_w:end_w]
             if save_crops:
-                filename = "_" + str(start_h) + "_" + str(end_h) + "_" + str(start_w) + "_" + str(end_w) + ".png"
-                filepath = os.path.join(saving_path, filename)
-                save_image(cropped, filepath)
+                filename = saving_path + "_" + str(start_h) + "_" + str(end_h) + "_" + str(start_w) + "_" + str(end_w) + ".png"
+                pil_image = to_pil_image(cropped)
+                pil_image.save(filename)
 
+    del padded
+    
 
 def load_torch_image(fname):
     image = cv2.imread(fname)
@@ -335,14 +334,6 @@ def load_torch_image(fname):
         raise FileNotFoundError(f"Image file '{fname}' not found or unable to read.")
 
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-    # Ensure image is uint8
-    if image.dtype != 'uint8':
-        image = image.astype('uint8')
-
-    transform = T.Compose([
-        T.ToTensor(),
-        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-
+    transform = T.ToTensor()
     return transform(image)
+
