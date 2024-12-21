@@ -311,7 +311,7 @@ def split_image_and_save(image, crop_h, crop_w, save_crops=False, saving_path=No
     pad_h = n_h * crop_h - h
     pad_w = n_w * crop_w - w
 
-    padded = F.pad(image, (0, pad_w, 0, pad_h), mode="constant")
+    padded = F.pad(image, (0, pad_w, 0, pad_h), "constant", 0)
     
     del image
 
