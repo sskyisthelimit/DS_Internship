@@ -47,8 +47,10 @@ def match_lightglue_crop(tensor_img1, tensor_img2, new_w, new_h, matcher, extrac
 
     m_kpts0, m_kpts1 = kpts0[matches[..., 0]].cpu().numpy(), kpts1[matches[..., 1]].cpu().numpy()
     
-    return (m_kpts0 / (new_w / old_size[0], new_h / old_size[1]) + (start_w, start_h),
-            m_kpts1 / (new_w / old_size[0], new_h / old_size[1]) + (start_w, start_h))
+    m_kpts0 = (m_kpts0 * (new_w / old_size[0], new_h / old_size[1]) + (start_w, start_h))
+    m_kpts1 = (m_kpts1 * (new_w / old_size[0], new_h / old_size[1]) + (start_w, start_h))
+
+    return (m_kpts0, m_kpts1)
 
 
 def split_image(image, n, save_crops=False, saving_path=None):
@@ -158,8 +160,8 @@ def lightglue_matcher(
     all_crops = []
 
     for pair_index in range(limit):
-        crp1 = crp_1_img[dict_keys[pair_index]]["image"]
-        crp2 = crp_2_img[dict_keys[pair_index]]["image"]
+        crp1 = crp_1_img[dict_keys[pair_index]]["image"].float() / 255.0
+        crp2 = crp_2_img[dict_keys[pair_index]]["image"].float() / 255.0
 
         pair_mkpts0, pair_mkpts1 = match_lightglue_crop(
             crp1,
