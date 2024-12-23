@@ -148,7 +148,7 @@ def lightglue_matcher(
     crp_2_img = split_image(img2, n_pair)
 
     dict_keys = list(crp_1_img.keys())
-    m_kpts0, m_kpts1 = [], []
+    results = []
 
     limit = int(n_pair / 2) ** 2 if not limit_printing else limit_printing
 
@@ -176,7 +176,27 @@ def lightglue_matcher(
         all_matches.append((pair_mkpts0, pair_mkpts1))
         all_crops.append((crp1, crp2))
 
-    # Plot all matches together
+        num_matches = len(pair_mkpts0)
+        distances = np.linalg.norm(pair_mkpts0 - pair_mkpts1, axis=1)
+        mean_dist = np.mean(distances) if distances.size > 0 else None
+        median_dist = np.median(distances) if distances.size > 0 else None
+
+        if num_matches > 4:
+            H, inliers = cv2.findHomography(pair_mkpts0, pair_mkpts1, cv2.RANSAC, 5.0)
+            inlier_ratio = np.sum(inliers) / num_matches if inliers is not None else 0
+        else:
+            inlier_ratio = None
+
+        result = {
+            "pair_index": pair_index,
+            "num_matches": num_matches,
+            "mean_distance": mean_dist,
+            "median_distance": median_dist,
+            "inlier_ratio": inlier_ratio,
+        }
+
+        results.append(result)
+
     for idx, ((pair_mkpts0, pair_mkpts1), (crp1, crp2)) in enumerate(zip(all_matches, all_crops)):
         fig, axes = plt.subplots(
             1, 2, figsize=(10, 5), dpi=100, gridspec_kw={"width_ratios": [1, 1]}
@@ -196,6 +216,10 @@ def lightglue_matcher(
         # Finalize and show
         plt.show()
         plt.close(fig)
+        
+        print(results[idx])
+    
+    return results
 
 
 def match_loftr_crop(tensor_img1, tensor_img2, new_w, new_h, matcher, old_size, start_w, start_h, device):
