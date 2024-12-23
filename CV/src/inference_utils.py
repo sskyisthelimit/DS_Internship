@@ -139,7 +139,9 @@ def plot_matches(kpts0, kpts1, color=None, lw=1.5, ps=4, a=1.0, labels=None, axe
         ax1.scatter(kpts1[:, 0], kpts1[:, 1], c=color, s=ps)
 
 
-def lightglue_matcher(path_img_1, path_img_2, matcher, extractor, w, h, n_pair, crp_w, crp_h, device, limit_printing=False):
+def lightglue_matcher(
+    path_img_1, path_img_2, matcher, extractor, w, h, n_pair, crp_w, crp_h, device, limit_printing=False
+):
     img1 = load_torch_image(path_img_1, w, h).to(device)
     img2 = load_torch_image(path_img_2, w, h).to(device)
 
@@ -149,38 +151,49 @@ def lightglue_matcher(path_img_1, path_img_2, matcher, extractor, w, h, n_pair, 
     dict_keys = list(crp_1_img.keys())
     m_kpts0, m_kpts1 = [], []
 
-    limit = int(n_pair/2)**2 if not limit_printing else limit_printing
+    limit = int(n_pair / 2) ** 2 if not limit_printing else limit_printing
+
+    # Collect all matches and crop data
+    all_matches = []
+    all_crops = []
 
     for pair_index in range(limit):
-        crp1 = crp_1_img[dict_keys[pair_index]]['image']
-        crp2 = crp_2_img[dict_keys[pair_index]]['image']
+        crp1 = crp_1_img[dict_keys[pair_index]]["image"]
+        crp2 = crp_2_img[dict_keys[pair_index]]["image"]
 
         pair_mkpts0, pair_mkpts1 = match_lightglue_crop(
-            crp1, crp2, crp_w, crp_h, matcher, extractor,
+            crp1,
+            crp2,
+            crp_w,
+            crp_h,
+            matcher,
+            extractor,
             [crp1.size(-1), crp1.size(-2)],
-            crp_1_img[dict_keys[pair_index]]['coordinates']['start_w'],
-            crp_1_img[dict_keys[pair_index]]['coordinates']['start_h'],
-            device
+            crp_1_img[dict_keys[pair_index]]["coordinates"]["start_w"],
+            crp_1_img[dict_keys[pair_index]]["coordinates"]["start_h"],
+            device,
         )
 
-        m_kpts0.append(pair_mkpts0)
-        m_kpts1.append(pair_mkpts1)
-        
+        all_matches.append((pair_mkpts0, pair_mkpts1))
+        all_crops.append((crp1, crp2))
+
+    # Plot all matches together
+    for idx, ((pair_mkpts0, pair_mkpts1), (crp1, crp2)) in enumerate(zip(all_matches, all_crops)):
         fig, axes = plt.subplots(
             1, 2, figsize=(10, 5), dpi=100, gridspec_kw={"width_ratios": [1, 1]}
         )
-        
+
         # Plot the images
         axes[0].imshow(crp1.squeeze(0).T.cpu(), cmap="gray")
         axes[1].imshow(crp2.squeeze(0).T.cpu(), cmap="gray")
-        
+
         # Clear axes ticks and frames
         for ax in axes:
             ax.axis("off")
 
         # Plot the matches
         plot_matches(pair_mkpts0, pair_mkpts1, color="lime", lw=0.2, axes=axes)
-        
+
         # Finalize and show
         plt.show()
         plt.close(fig)
