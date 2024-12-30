@@ -1,6 +1,10 @@
 import torch
-from transformers import (Trainer, TrainingArguments,
-                          AutoTokenizer, AutoModelForTokenClassification)
+# when trained using BERT pre-tuned for NER
+# from transformers import (Trainer, TrainingArguments,
+#                           AutoTokenizer, AutoModelForTokenClassification)
+from transformers import (BertForTokenClassification, BertTokenizerFast,
+                          Trainer, TrainingArguments)
+
 
 from utils import (JSONDataset, compute_loss_with_class_weights,
                    compute_class_weights, get_data_collator,
@@ -10,8 +14,12 @@ labels = ["O", "B-MOUNTAIN", "I-MOUNTAIN", "B-ELEVATION", "I-ELEVATION"]
 label2id = {label: idx for idx, label in enumerate(labels)}
 id2label = {idx: label for label, idx in label2id.items()}
 
+# when trained using BERT pre-tuned for NER
+# tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
 
-tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
+model_name = "bert-base-cased"
+tokenizer = BertTokenizerFast.from_pretrained(model_name)
+
 # File paths
 train_file = "../datasets/training_dataset.json"
 val_file = "../datasets/val_dataset.json"
@@ -23,8 +31,12 @@ val_dataset = JSONDataset(val_file, tokenizer, label2id, max_len=256)
 
 class_weights = compute_class_weights(train_dataset)
 
-model = AutoModelForTokenClassification.from_pretrained(
-    "dslim/bert-base-NER",
+# when trained using BERT pre-tuned for NER
+# model = AutoModelForTokenClassification.from_pretrained(
+#     "dslim/bert-base-NER",
+
+model = BertForTokenClassification.from_pretrained(
+    model_name,
     num_labels=len(label2id),
     id2label=id2label,   
     label2id=label2id,   
