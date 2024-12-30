@@ -1,6 +1,7 @@
 import torch
-from transformers import (BertForTokenClassification, BertTokenizerFast,
-                          Trainer, TrainingArguments)
+from transformers import (Trainer, TrainingArguments,
+                          AutoTokenizer, AutoModelForTokenClassification)
+
 from utils import (JSONDataset, compute_loss_with_class_weights,
                    compute_class_weights, get_data_collator,
                    compute_metrics)
@@ -10,9 +11,7 @@ label2id = {label: idx for idx, label in enumerate(labels)}
 id2label = {idx: label for label, idx in label2id.items()}
 
 
-# Define model and tokenizer
-model_name = "bert-base-cased"
-tokenizer = BertTokenizerFast.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained("dslim/bert-base-NER")
 # File paths
 train_file = "../datasets/training_dataset.json"
 val_file = "../datasets/val_dataset.json"
@@ -24,8 +23,8 @@ val_dataset = JSONDataset(val_file, tokenizer, label2id, max_len=256)
 
 class_weights = compute_class_weights(train_dataset)
 
-model = BertForTokenClassification.from_pretrained(
-    model_name,
+model = AutoModelForTokenClassification.from_pretrained(
+    "dslim/bert-base-NER",
     num_labels=len(label2id),
     id2label=id2label,   
     label2id=label2id,   
