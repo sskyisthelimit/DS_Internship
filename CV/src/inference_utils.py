@@ -53,7 +53,7 @@ def match_lightglue_crop(tensor_img1, tensor_img2, new_w, new_h, matcher, extrac
 def split_image(image, n, save_crops=False, saving_path=None):
     _, c, h, w = image.size()
     if n % 2 != 0:
-        raise ValueError("N should be even number")
+        raise ValueError("N should be an even number")
 
     step_h = h // (n // 2)
     step_w = w // (n // 2)
@@ -61,17 +61,51 @@ def split_image(image, n, save_crops=False, saving_path=None):
     cropped_images = {}
     for i in range(n // 2):
         for j in range(n // 2):
+            # Calculate start and end positions with adjustments
             start_h = i * step_h
             end_h = (i + 1) * step_h
             start_w = j * step_w
             end_w = (j + 1) * step_w
 
-            cropped = image.narrow(2, start_h, end_h - start_h).narrow(3, start_w, end_w - start_w)
+            # Adjust for top and bottom edges
+            if i == 0:  # Top edge
+                end_h += 6
+            elif i == n // 2 - 1:  # Bottom edge
+                start_h -= 6
+            else:  # Middle crops
+                start_h -= 3
+                end_h += 3
+
+            # Adjust for left and right edges
+            if j == 0:  # Left edge
+                end_w += 6
+            elif j == n // 2 - 1:  # Right edge
+                start_w -= 6
+            else:  # Middle crops
+                start_w -= 3
+                end_w += 3
+
+            # Ensure boundaries are valid
+            start_h = max(0, start_h)
+            end_h = min(h, end_h)
+            start_w = max(0, start_w)
+            end_w = min(w, end_w)
+
+            # Crop the image
+            crop_height = end_h - start_h
+            crop_width = end_w - start_w
+            cropped = image.narrow(2, start_h, crop_height).narrow(3, start_w, crop_width)
+
+            # Save coordinates and crop
             coordinates = {'start_h': start_h, 'end_h': end_h, 'start_w': start_w, 'end_w': end_w}
             key = f'cropped_{i}_{j}'
             cropped_images[key] = {'coordinates': coordinates, 'image': cropped}
+
+            # Save the crop as an image file
             if save_crops:
-                filename = "_" + str(start_h) + "_" + str(end_h) + "_" + str(start_w) + "_" + str(end_w) + ".png"
+                if not saving_path:
+                    raise ValueError("Saving path must be provided if save_crops is True")
+                filename = f"_{start_h}_{end_h}_{start_w}_{end_w}.png"
                 filepath = os.path.join(saving_path, filename)
                 save_image(cropped, filepath)
 
