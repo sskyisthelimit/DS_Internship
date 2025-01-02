@@ -12,6 +12,7 @@ import torchvision
 from kornia_moons.viz import draw_LAF_matches
 import torchvision.transforms.functional as F
 import torchvision.transforms as T
+from torchvision.utils import save_image
 import rasterio
 from PIL import Image
 from lightglue.utils import match_pair
@@ -46,8 +47,13 @@ def match_lightglue_crop(tensor_img1, tensor_img2, new_w, new_h, matcher, extrac
     kpts0, kpts1, matches = feats0["keypoints"], feats1["keypoints"], matches01["matches"]
 
     m_kpts0, m_kpts1 = kpts0[matches[..., 0]].cpu().numpy(), kpts1[matches[..., 1]].cpu().numpy()
-    
-    return (m_kpts0, m_kpts1)
+    kpts0, kpts1 = kpts0.cpu().numpy(), kpts1.cpu().numpy()
+    reposition = lambda x : x / (new_w / old_size[0], new_h / old_size[1]) + (start_w, start_h)
+    # return (m_kpts0, m_kpts1, kpts0, kpts1)
+    return (reposition(m_kpts0),
+            reposition(m_kpts1),
+            reposition(kpts0),
+            reposition(kpts1))
 
 
 def split_image(image, n, save_crops=False, saving_path=None):
@@ -115,145 +121,6 @@ def split_image(image, n, save_crops=False, saving_path=None):
 def save_image(image, path):
     image_pil = F.to_pil_image(image)
     image_pil.save(path)
-
-
-def plot_matches(kpts0, kpts1, color=None, lw=1.5, ps=4, a=1.0, labels=None, axes=None):
-    """Plot matches for a pair of existing images.
-    Args:
-        kpts0, kpts1: corresponding keypoints of size (N, 2).
-        color: color of each match, string or RGB tuple. Random if not given.
-        lw: width of the lines.
-        ps: size of the end points (no endpoint if ps=0)
-        indices: indices of the images to draw the matches on.
-        a: alpha opacity of the match lines.
-    """
-    fig = plt.gcf()
-    if axes is None:
-        ax = fig.axes
-        ax0, ax1 = ax[0], ax[1]
-    else:
-        ax0, ax1 = axes
-    if isinstance(kpts0, torch.Tensor):
-        kpts0 = kpts0.cpu().numpy()
-    if isinstance(kpts1, torch.Tensor):
-        kpts1 = kpts1.cpu().numpy()
-    assert len(kpts0) == len(kpts1)
-    if color is None:
-        color = matplotlib.cm.hsv(np.random.rand(len(kpts0))).tolist()
-    elif len(color) > 0 and not isinstance(color[0], (tuple, list)):
-        color = [color] * len(kpts0)
-
-    if lw > 0:
-        for i in range(len(kpts0)):
-            line = matplotlib.patches.ConnectionPatch(
-                xyA=(kpts0[i, 0], kpts0[i, 1]),
-                xyB=(kpts1[i, 0], kpts1[i, 1]),
-                coordsA=ax0.transData,
-                coordsB=ax1.transData,
-                axesA=ax0,
-                axesB=ax1,
-                zorder=1,
-                color=color[i],
-                linewidth=lw,
-                clip_on=True,
-                alpha=a,
-                label=None if labels is None else labels[i],
-                picker=5.0,
-            )
-            line.set_annotation_clip(True)
-            fig.add_artist(line)
-
-    # freeze the axes to prevent the transform to change
-    ax0.autoscale(enable=False)
-    ax1.autoscale(enable=False)
-
-    if ps > 0:
-        ax0.scatter(kpts0[:, 0], kpts0[:, 1], c=color, s=ps)
-        ax1.scatter(kpts1[:, 0], kpts1[:, 1], c=color, s=ps)
-
-
-def lightglue_matcher(
-    path_img_1, path_img_2, matcher, extractor, w, h, n_pair, crp_w, crp_h, device, limit_printing=False
-):
-    img1 = load_torch_image(path_img_1, w, h).to(device)
-    img2 = load_torch_image(path_img_2, w, h).to(device)
-
-    crp_1_img = split_image(img1, n_pair)
-    crp_2_img = split_image(img2, n_pair)
-
-    dict_keys = list(crp_1_img.keys())
-    results = []
-
-    limit = int(n_pair / 2) ** 2 if not limit_printing else limit_printing
-
-    # Collect all matches and crop data
-    all_matches = []
-    all_crops = []
-
-    for pair_index in range(limit):
-        crp1 = crp_1_img[dict_keys[pair_index]]["image"]
-        crp2 = crp_2_img[dict_keys[pair_index]]["image"]
-
-        pair_mkpts0, pair_mkpts1 = match_lightglue_crop(
-            crp1,
-            crp2,
-            crp_w,
-            crp_h,
-            matcher,
-            extractor,
-            [crp1.size(-1), crp1.size(-2)],
-            crp_1_img[dict_keys[pair_index]]["coordinates"]["start_w"],
-            crp_1_img[dict_keys[pair_index]]["coordinates"]["start_h"],
-            device,
-        )
-
-        all_matches.append((pair_mkpts0, pair_mkpts1))
-        all_crops.append((crp1, crp2))
-
-        num_matches = len(pair_mkpts0)
-        distances = np.linalg.norm(pair_mkpts0 - pair_mkpts1, axis=1)
-        mean_dist = np.mean(distances) if distances.size > 0 else None
-        median_dist = np.median(distances) if distances.size > 0 else None
-
-        if num_matches > 4:
-            H, inliers = cv2.findHomography(pair_mkpts0, pair_mkpts1, cv2.RANSAC, 5.0)
-            inlier_ratio = np.sum(inliers) / num_matches if inliers is not None else 0
-        else:
-            inlier_ratio = None
-
-        result = {
-            "pair_index": pair_index,
-            "num_matches": num_matches,
-            "mean_distance": mean_dist,
-            "median_distance": median_dist,
-            "inlier_ratio": inlier_ratio,
-        }
-
-        results.append(result)
-
-    for idx, ((pair_mkpts0, pair_mkpts1), (crp1, crp2)) in enumerate(zip(all_matches, all_crops)):
-        fig, axes = plt.subplots(
-            1, 2, figsize=(10, 5), dpi=100, gridspec_kw={"width_ratios": [1, 1]}
-        )
-
-        # Plot the images
-        axes[0].imshow(crp1.squeeze(0).T.cpu(), cmap="gray")
-        axes[1].imshow(crp2.squeeze(0).T.cpu(), cmap="gray")
-
-        # Clear axes ticks and frames
-        for ax in axes:
-            ax.axis("off")
-
-        # Plot the matches
-        plot_matches(pair_mkpts0, pair_mkpts1, color="lime", lw=0.2, axes=axes)
-
-        # Finalize and show
-        plt.show()
-        plt.close(fig)
-        
-        print(results[idx])
-    
-    return results
 
 
 def match_loftr_crop(tensor_img1, tensor_img2, new_w, new_h, matcher, old_size, start_w, start_h, device):
@@ -353,3 +220,187 @@ def loftr_matcher(path_img_1, path_img_2, matcher, w, h, n_pair, crp_w, crp_h, d
         plt.show()
         plt.clf()
         inliers, mkpts0, mkpts1 = [], [], []
+
+def match_lightglue_crop(tensor_img1, tensor_img2, new_w, new_h, matcher, extractor, old_size, start_w, start_h, device):
+    cut_img1 = resize_torch_crop(tensor_img1, new_w, new_h)
+    cut_img2 = resize_torch_crop(tensor_img2, new_w, new_h)
+
+    if torch.cuda.is_available():
+        cut_img1 = cut_img1.cuda(device).float()
+        cut_img2 = cut_img2.cuda(device).float()
+
+    with torch.no_grad():
+            feats0, feats1, matches01 = match_pair(
+                extractor, matcher,
+                K.color.rgb_to_grayscale(cut_img1).to(device),
+                K.color.rgb_to_grayscale(cut_img2).to(device),
+                device)
+    
+    kpts0, kpts1, matches = feats0["keypoints"], feats1["keypoints"], matches01["matches"]
+
+    m_kpts0, m_kpts1 = kpts0[matches[..., 0]].cpu().numpy(), kpts1[matches[..., 1]].cpu().numpy()
+    kpts0, kpts1 = kpts0.cpu().numpy(), kpts1.cpu().numpy()
+    reposition = lambda x : x / (new_w / old_size[0], new_h / old_size[1]) + (start_w, start_h)
+    # return (m_kpts0, m_kpts1, kpts0, kpts1)
+    return (reposition(m_kpts0),
+            reposition(m_kpts1),
+            reposition(kpts0),
+            reposition(kpts1))
+
+def plot_matches(kpts0, kpts1, color=None, lw=1.5, ps=4, a=1.0, labels=None, axes=None):
+    """Plot matches for a pair of existing images.
+    Args:
+        kpts0, kpts1: corresponding keypoints of size (N, 2).
+        color: color of each match, string or RGB tuple. Random if not given.
+        lw: width of the lines.
+        ps: size of the end points (no endpoint if ps=0)
+        indices: indices of the images to draw the matches on.
+        a: alpha opacity of the match lines.
+    """
+    fig = plt.gcf()
+    if axes is None:
+        ax = fig.axes
+        ax0, ax1 = ax[0], ax[1]
+    else:
+        ax0, ax1 = axes
+    if isinstance(kpts0, torch.Tensor):
+        kpts0 = kpts0.cpu().numpy()
+    if isinstance(kpts1, torch.Tensor):
+        kpts1 = kpts1.cpu().numpy()
+    assert len(kpts0) == len(kpts1)
+    if color is None:
+        color = matplotlib.cm.hsv(np.random.rand(len(kpts0))).tolist()
+    elif len(color) > 0 and not isinstance(color[0], (tuple, list)):
+        color = [color] * len(kpts0)
+
+    if lw > 0:
+        for i in range(len(kpts0)):
+            line = matplotlib.patches.ConnectionPatch(
+                xyA=(kpts0[i, 0], kpts0[i, 1]),
+                xyB=(kpts1[i, 0], kpts1[i, 1]),
+                coordsA=ax0.transData,
+                coordsB=ax1.transData,
+                axesA=ax0,
+                axesB=ax1,
+                zorder=1,
+                color=color[i],
+                linewidth=lw,
+                clip_on=True,
+                alpha=a,
+                label=None if labels is None else labels[i],
+                picker=5.0,
+            )
+            line.set_annotation_clip(True)
+            fig.add_artist(line)
+
+    # freeze the axes to prevent the transform to change
+    ax0.autoscale(enable=False)
+    ax1.autoscale(enable=False)
+
+    if ps > 0:
+        ax0.scatter(kpts0[:, 0], kpts0[:, 1], c=color, s=ps)
+        ax1.scatter(kpts1[:, 0], kpts1[:, 1], c=color, s=ps)
+
+def visualize_matches(img_1_matches, img_2_matches):
+    plt.figure(figsize=(16, 16), dpi=250)
+
+    plt.subplot(1, 2, 1)
+    plt.imshow(resized_img1)
+    plt.title('Image 1 with matches')
+    plt.axis('off')
+    
+    plt.subplot(1, 2, 2)
+    plt.imshow(resized_img2)
+    plt.title('Image 2 with matches')
+    plt.axis('off')
+
+    plot_matches(img_1_matches, img_2_matches, color="purple", lw=0.1)
+
+
+def save_matches(img1_matches, img2_matches, save_dir):
+    """
+    Save the match arrays to .npy files for later use.
+    """
+    os.makedirs(save_dir, exist_ok=True)  # Ensure the save directory exists
+    np.save(os.path.join(save_dir, "img1_matches.npy"), img1_matches)
+    np.save(os.path.join(save_dir, "img2_matches.npy"), img2_matches)
+    print(f"Matches saved to {save_dir}")
+
+def load_matches(save_dir):
+    """
+    Load the match arrays from .npy files.
+    """
+    img1_matches = np.load(os.path.join(save_dir, "img1_matches.npy"))
+    img2_matches = np.load(os.path.join(save_dir, "img2_matches.npy"))
+    print(f"Matches loaded from {save_dir}")
+    return img1_matches, img2_matches
+
+
+def lightglue_matcher(
+    path_img_1, path_img_2, matcher, extractor, w, h, n_pair, crp_w, crp_h, device,
+    save_dir, limit_printing=False, visualize=False, plotting_size=2000
+):
+    img1 = load_torch_image(path_img_1, w, h).to(device)
+    img2 = load_torch_image(path_img_2, w, h).to(device)
+
+    crp_1_img = split_image(img1, n_pair)
+    crp_2_img = split_image(img2, n_pair)
+
+    dict_keys = list(crp_1_img.keys())
+    results = []
+
+    limit = int(n_pair / 2) ** 2 if not limit_printing else limit_printing
+
+    # Collect all matches and crop data
+    img_1_matches = []
+    img_2_matches = []
+    all_kpts = []
+
+    for pair_index in range(limit):
+        crp1 = crp_1_img[dict_keys[pair_index]]["image"]
+        crp2 = crp_2_img[dict_keys[pair_index]]["image"]
+
+        pair_mkpts0, pair_mkpts1, kpts0, kpts1 = match_lightglue_crop(
+            crp1,
+            crp2,
+            crp_w,
+            crp_h,
+            matcher,
+            extractor,
+            [crp1.size(-1), crp1.size(-2)],
+            crp_1_img[dict_keys[pair_index]]["coordinates"]["start_w"],
+            crp_1_img[dict_keys[pair_index]]["coordinates"]["start_h"],
+            device,
+        )
+
+        del crp1, crp2
+        
+        img_1_matches.append(pair_mkpts0)
+        img_2_matches.append(pair_mkpts1)
+        
+        all_kpts.append((kpts0, kpts1))
+
+    
+    img1 = img1.squeeze(0).cpu().numpy()
+    img2 = img2.squeeze(0).cpu().numpy()
+    
+    # Convert the numpy array to a cv2 image
+    print(img1.shape, img2.shape)
+    img1 = np.transpose(img1, (1, 2, 0))
+    img2 = np.transpose(img2, (1, 2, 0))
+    img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+    img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
+    
+    for kpts0, kpts1 in all_kpts:
+        for x, y in kpts0:
+            cv2.circle(img1, (int(x), int(y)), radius=2, color=(0, 173, 61), thickness=-1)
+        for x, y in kpts1:
+            cv2.circle(img2, (int(x), int(y)), radius=2, color=(255, 0, 0), thickness=-1)
+
+
+    img_1_matches = np.vstack(img_1_matches)
+    img_2_matches = np.vstack(img_2_matches)
+
+    cv2.imwrite(os.path.join(save_dir, "kpts1.png"), img1)
+    cv2.imwrite(os.path.join(save_dir, "kpts2.png"), img2)
+    save_matches(img_1_matches, img_2_matches, save_dir)
