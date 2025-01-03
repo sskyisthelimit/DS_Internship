@@ -397,3 +397,20 @@ def lightglue_matcher(
     save_npy([img_1_kpts, img_2_kpts],
              ["img_1_kpts.npy", "img_2_kpts.npy"],
              save_dir)
+    
+
+def visualize_kpts(
+    img,
+    kpts,
+    color="red"
+):
+
+    plt.figure(figsize=(16, 16), dpi=250)
+    plt.imshow(img)
+    plt.title('Image with keypoints')
+    plt.axis('off')
+    ax = plt.gca()
+    if isinstance(kpts, torch.Tensor):
+        kpts = kpts.cpu().numpy()
+    ax.scatter(kpts[:, 0], kpts[:, 1], c=color, s=4, linewidths=0, alpha=1)
+    plt.show()
