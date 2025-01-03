@@ -8,13 +8,10 @@ import numpy as np
 import torch
 
 from kornia_moons.feature import *
-import torchvision
 from kornia_moons.viz import draw_LAF_matches
 import torchvision.transforms.functional as F
 import torchvision.transforms as T
 from torchvision.utils import save_image
-import rasterio
-from PIL import Image
 from lightglue.utils import match_pair
 
 
