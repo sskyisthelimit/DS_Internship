@@ -323,23 +323,19 @@ def visualize_matches(resized_img1,
     plot_matches(img1_matches, img2_matches, color=color, lw=lw)
 
 
-def save_matches(img1_matches, img2_matches, save_dir):
+def save_npy(arrays, filenames, save_dir):
     """
     Save the match arrays to .npy files for later use.
     """
-    os.makedirs(save_dir, exist_ok=True)  # Ensure the save directory exists
-    np.save(os.path.join(save_dir, "img1_matches.npy"), img1_matches)
-    np.save(os.path.join(save_dir, "img2_matches.npy"), img2_matches)
-    print(f"Matches saved to {save_dir}")
+    os.makedirs(save_dir, exist_ok=True)
+    for arr, filename in zip(arrays, filenames):
+        np.save(os.path.join(save_dir, filename), arr)
 
-def load_matches(save_dir):
-    """
-    Load the match arrays from .npy files.
-    """
-    img1_matches = np.load(os.path.join(save_dir, "img1_matches.npy"))
-    img2_matches = np.load(os.path.join(save_dir, "img2_matches.npy"))
-    print(f"Matches loaded from {save_dir}")
-    return img1_matches, img2_matches
+def load_npy(filenames, save_dir):
+    arrays = []
+    for filename in filenames:
+        arrays.append(np.load(os.path.join(save_dir, filename)))
+    return arrays
 
 
 def lightglue_matcher(
@@ -360,7 +356,8 @@ def lightglue_matcher(
     # Collect all matches and crop data
     img_1_matches = []
     img_2_matches = []
-    all_kpts = []
+    img_1_kpts = []
+    img_2_kpts = []
 
     for pair_index in range(limit):
         crp1 = crp_1_img[dict_keys[pair_index]]["image"]
@@ -384,29 +381,19 @@ def lightglue_matcher(
         img_1_matches.append(pair_mkpts0)
         img_2_matches.append(pair_mkpts1)
         
-        all_kpts.append((kpts0, kpts1))
+        img_1_kpts.append(kpts0)
+        img_2_kpts.append(kpts1)
 
-    
-    img1 = img1.squeeze(0).cpu().numpy()
-    img2 = img2.squeeze(0).cpu().numpy()
-    
-    # Convert the numpy array to a cv2 image
-    print(img1.shape, img2.shape)
-    img1 = np.transpose(img1, (1, 2, 0))
-    img2 = np.transpose(img2, (1, 2, 0))
-    img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
-    img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
-    
-    for kpts0, kpts1 in all_kpts:
-        for x, y in kpts0:
-            cv2.circle(img1, (int(x), int(y)), radius=2, color=(0, 173, 61), thickness=-1)
-        for x, y in kpts1:
-            cv2.circle(img2, (int(x), int(y)), radius=2, color=(255, 0, 0), thickness=-1)
-
-
+    del img1, img2
     img_1_matches = np.vstack(img_1_matches)
     img_2_matches = np.vstack(img_2_matches)
 
-    cv2.imwrite(os.path.join(save_dir, "kpts1.png"), img1)
-    cv2.imwrite(os.path.join(save_dir, "kpts2.png"), img2)
-    save_matches(img_1_matches, img_2_matches, save_dir)
+    img_1_kpts = np.vstack(img_1_kpts)
+    img_2_kpts = np.vstack(img_2_kpts)
+    
+    save_npy([img_1_matches, img_2_matches],
+             ["img1_matches.npy", "img2_matches.npy"],
+             save_dir)
+    save_npy([img_1_kpts, img_2_kpts],
+             ["img_1_kpts.npy", "img_2_kpts.npy"],
+             save_dir)
