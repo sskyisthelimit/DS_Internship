@@ -301,7 +301,13 @@ def plot_matches(kpts0, kpts1, color=None, lw=1.5, ps=4, a=1.0, labels=None, axe
         ax0.scatter(kpts0[:, 0], kpts0[:, 1], c=color, s=ps)
         ax1.scatter(kpts1[:, 0], kpts1[:, 1], c=color, s=ps)
 
-def visualize_matches(img_1_matches, img_2_matches):
+
+def visualize_matches(resized_img1,
+                      resized_img2,
+                      img1_matches,
+                      img2_matches,
+                      color="lime",
+                      lw=0.1):
     plt.figure(figsize=(16, 16), dpi=250)
 
     plt.subplot(1, 2, 1)
@@ -314,7 +320,7 @@ def visualize_matches(img_1_matches, img_2_matches):
     plt.title('Image 2 with matches')
     plt.axis('off')
 
-    plot_matches(img_1_matches, img_2_matches, color="purple", lw=0.1)
+    plot_matches(img1_matches, img2_matches, color=color, lw=lw)
 
 
 def save_matches(img1_matches, img2_matches, save_dir):
