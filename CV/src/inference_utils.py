@@ -71,21 +71,21 @@ def split_image(image, n, save_crops=False, saving_path=None):
 
             # Adjust for top and bottom edges
             if i == 0:  # Top edge
-                end_h += 6
+                end_h += 12
             elif i == n // 2 - 1:  # Bottom edge
-                start_h -= 6
+                start_h -= 12
             else:  # Middle crops
-                start_h -= 3
-                end_h += 3
+                start_h -= 6
+                end_h += 6
 
             # Adjust for left and right edges
             if j == 0:  # Left edge
-                end_w += 6
+                end_w += 12
             elif j == n // 2 - 1:  # Right edge
-                start_w -= 6
+                start_w -= 12
             else:  # Middle crops
-                start_w -= 3
-                end_w += 3
+                start_w -= 6
+                end_w += 6
 
             # Ensure boundaries are valid
             start_h = max(0, start_h)
