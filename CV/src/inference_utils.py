@@ -158,6 +158,11 @@ def plot_matches(kpts0, kpts1, ax, color=None, lw=1.5, ps=4, a=1.0):
         ps: size of the end points (no endpoint if ps=0)
         a: alpha opacity of the match lines.
     """
+    fig = plt.gcf()
+
+    ax = fig.axes
+    ax0, ax1 = ax[0], ax[1]
+    
     if isinstance(kpts0, torch.Tensor):
         kpts0 = kpts0.cpu().numpy()
     if isinstance(kpts1, torch.Tensor):
@@ -168,24 +173,34 @@ def plot_matches(kpts0, kpts1, ax, color=None, lw=1.5, ps=4, a=1.0):
     elif len(color) > 0 and not isinstance(color[0], (tuple, list)):
         color = [color] * len(kpts0)
 
-    for i in range(len(kpts0)):
-        line = ConnectionPatch(
-            xyA=(kpts0[i, 0], kpts0[i, 1]),
-            xyB=(kpts1[i, 0], kpts1[i, 1] + ax.images[0].get_array().shape[1]),
-            coordsA="data",
-            coordsB="data",
-            axesA=ax,
-            axesB=ax,
-            zorder=1,
-            color=color[i],
-            linewidth=lw,
-            alpha=a,
-        )
-        ax.add_artist(line)
+    if lw > 0:
+        for i in range(len(kpts0)):
+            line = ConnectionPatch(
+                xyA=(kpts0[i, 0], kpts0[i, 1]),
+                xyB=(kpts1[i, 0], kpts1[i, 1]),
+                coordsA=ax0.transData,
+                coordsB=ax1.transData,
+                axesA=ax0,
+                axesB=ax1,
+                zorder=1,
+                color=color[i],
+                linewidth=lw,
+                clip_on=True,
+                alpha=a,
+                label=None,
+                picker=5.0,
+            )
+            line.set_annotation_clip(True)
+            fig.add_artist(line)
+
+    # freeze the axes to prevent the transform to change
+    ax0.autoscale(enable=False)
+    ax1.autoscale(enable=False)
 
     if ps > 0:
-        ax.scatter(kpts0[:, 0], kpts0[:, 1], c=color, s=ps)
-        ax.scatter(kpts1[:, 0] + ax.images[0].get_array().shape[1], kpts1[:, 1], c=color, s=ps)
+        ax0.scatter(kpts0[:, 0], kpts0[:, 1], c=color, s=ps)
+        ax1.scatter(kpts1[:, 0], kpts1[:, 1], c=color, s=ps)
+
 
 
 def visualize_matches(img1, img2, img1_matches, img2_matches, color="lime", lw=0.1, save_path=None):
