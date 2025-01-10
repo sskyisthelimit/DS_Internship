@@ -162,7 +162,7 @@ def plot_matches(kpts0, kpts1, ax, color=None, lw=1.5, ps=4, a=1.0):
 
     ax = fig.axes
     ax0, ax1 = ax[0], ax[1]
-    
+
     if isinstance(kpts0, torch.Tensor):
         kpts0 = kpts0.cpu().numpy()
     if isinstance(kpts1, torch.Tensor):
@@ -202,10 +202,9 @@ def plot_matches(kpts0, kpts1, ax, color=None, lw=1.5, ps=4, a=1.0):
         ax1.scatter(kpts1[:, 0], kpts1[:, 1], c=color, s=ps)
 
 
-
 def visualize_matches(img1, img2, img1_matches, img2_matches, color="lime", lw=0.1, save_path=None):
     """
-    Visualizes matches for an image pair without gaps or titles, saves as PNG if specified.
+    Visualizes matches for an image pair with separate axes for each image.
     Args:
         img1: numpy array - first (left) image.
         img2: numpy array - second (right) image.
@@ -214,21 +213,25 @@ def visualize_matches(img1, img2, img1_matches, img2_matches, color="lime", lw=0
         lw: line width for match lines.
         save_path: filename to save the result as PNG.
     """
-    # Concatenate the images side-by-side
-    combined_img = np.concatenate((img1, img2), axis=1)
+    # Create two subplots
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(16, 8), dpi=250)
 
-    fig, ax = plt.subplots(figsize=(16, 8), dpi=250)
-    ax.imshow(combined_img)
-    ax.axis('off')
+    # Plot the images
+    ax0.imshow(img1)
+    ax1.imshow(img2)
+
+    # Remove axes for a cleaner look
+    ax0.axis('off')
+    ax1.axis('off')
 
     # Plot matches
-    plot_matches(img1_matches, img2_matches, ax, color=color, lw=lw)
+    plot_matches(img1_matches, img2_matches, ax=[ax0, ax1], color=color, lw=lw)
 
+    # Save the figure if a path is specified
     if save_path:
         plt.savefig(save_path, bbox_inches='tight', pad_inches=0, format='png')
         print(f"Saved matches to {save_path}")
     plt.show()
-
 
 
 def save_npy(arrays, filenames, save_dir):
