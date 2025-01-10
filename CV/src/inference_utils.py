@@ -1,6 +1,7 @@
 import os
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.patches import ConnectionPatch
 import cv2
 import kornia as K
 import numpy as np
@@ -147,21 +148,16 @@ def match_lightglue_crop(tensor_img1, tensor_img2, new_w, new_h, matcher,
             reposition(kpts1))
 
 
-def plot_matches(kpts0, kpts1, color=None, lw=1.5, ps=4, a=1.0):
-    """Plot matches for a pair of existing images.
+def plot_matches(kpts0, kpts1, ax, color=None, lw=1.5, ps=4, a=1.0):
+    """
+    Plot matches on a single axes instance.
     Args:
         kpts0, kpts1: corresponding keypoints of size (N, 2).
         color: color of each match, string or RGB tuple. Random if not given.
         lw: width of the lines.
         ps: size of the end points (no endpoint if ps=0)
-        indices: indices of the images to draw the matches on.
         a: alpha opacity of the match lines.
     """
-    fig = plt.gcf()
-
-    ax = fig.axes
-    ax0, ax1 = ax[0], ax[1]
-
     if isinstance(kpts0, torch.Tensor):
         kpts0 = kpts0.cpu().numpy()
     if isinstance(kpts1, torch.Tensor):
@@ -172,61 +168,52 @@ def plot_matches(kpts0, kpts1, color=None, lw=1.5, ps=4, a=1.0):
     elif len(color) > 0 and not isinstance(color[0], (tuple, list)):
         color = [color] * len(kpts0)
 
-    if lw > 0:
-        for i in range(len(kpts0)):
-            line = matplotlib.patches.ConnectionPatch(
-                xyA=(kpts0[i, 0], kpts0[i, 1]),
-                xyB=(kpts1[i, 0], kpts1[i, 1]),
-                coordsA=ax0.transData,
-                coordsB=ax1.transData,
-                axesA=ax0,
-                axesB=ax1,
-                zorder=1,
-                color=color[i],
-                linewidth=lw,
-                clip_on=True,
-                alpha=a,
-                label=None,
-                picker=5.0,
-            )
-            line.set_annotation_clip(True)
-            fig.add_artist(line)
-
-    # freeze the axes to prevent the transform to change
-    ax0.autoscale(enable=False)
-    ax1.autoscale(enable=False)
+    for i in range(len(kpts0)):
+        line = ConnectionPatch(
+            xyA=(kpts0[i, 0], kpts0[i, 1]),
+            xyB=(kpts1[i, 0], kpts1[i, 1] + ax.images[0].get_array().shape[1]),
+            coordsA="data",
+            coordsB="data",
+            axesA=ax,
+            axesB=ax,
+            zorder=1,
+            color=color[i],
+            linewidth=lw,
+            alpha=a,
+        )
+        ax.add_artist(line)
 
     if ps > 0:
-        ax0.scatter(kpts0[:, 0], kpts0[:, 1], c=color, s=ps)
-        ax1.scatter(kpts1[:, 0], kpts1[:, 1], c=color, s=ps)
+        ax.scatter(kpts0[:, 0], kpts0[:, 1], c=color, s=ps)
+        ax.scatter(kpts1[:, 0] + ax.images[0].get_array().shape[1], kpts1[:, 1], c=color, s=ps)
 
 
-def visualize_matches(img1,
-                      img2,
-                      img1_matches,
-                      img2_matches,
-                      color="lime",
-                      lw=0.1):
+def visualize_matches(img1, img2, img1_matches, img2_matches, color="lime", lw=0.1, save_path=None):
     """
-    Plots matches for image pair
-    img1: numpy array - first (left) to plot
-    img2: numpy array - second (right) to plot
-    img1_matches, img2_matches: corresponding matches kpts
-    color: color for plotting matches lines used in matplotlib.patches.ConnectionPatch
+    Visualizes matches for an image pair without gaps or titles, saves as PNG if specified.
+    Args:
+        img1: numpy array - first (left) image.
+        img2: numpy array - second (right) image.
+        img1_matches, img2_matches: corresponding keypoints.
+        color: color for match lines.
+        lw: line width for match lines.
+        save_path: filename to save the result as PNG.
     """
-    plt.figure(figsize=(16, 16), dpi=250)
+    # Concatenate the images side-by-side
+    combined_img = np.concatenate((img1, img2), axis=1)
 
-    plt.subplot(1, 2, 1)
-    plt.imshow(img1)
-    plt.title('Image 1 with matches')
-    plt.axis('off')
-    
-    plt.subplot(1, 2, 2)
-    plt.imshow(img2)
-    plt.title('Image 2 with matches')
-    plt.axis('off')
+    fig, ax = plt.subplots(figsize=(16, 8), dpi=250)
+    ax.imshow(combined_img)
+    ax.axis('off')
 
-    plot_matches(img1_matches, img2_matches, color=color, lw=lw)
+    # Plot matches
+    plot_matches(img1_matches, img2_matches, ax, color=color, lw=lw)
+
+    if save_path:
+        plt.savefig(save_path, bbox_inches='tight', pad_inches=0, format='png')
+        print(f"Saved matches to {save_path}")
+    plt.show()
+
 
 
 def save_npy(arrays, filenames, save_dir):
@@ -319,15 +306,20 @@ def lightglue_matcher(
 def visualize_kpts(
     img,
     kpts,
-    color="red"
+    color="red",
+    save_path=None
 ):
 
     plt.figure(figsize=(16, 16), dpi=250)
     plt.imshow(img)
-    plt.title('Image with keypoints')
+    if not save_path:
+        plt.title('Image with keypoints')
     plt.axis('off')
     ax = plt.gca()
     if isinstance(kpts, torch.Tensor):
         kpts = kpts.cpu().numpy()
     ax.scatter(kpts[:, 0], kpts[:, 1], c=color, s=4, linewidths=0, alpha=1)
-    plt.show()
+    if not save_path:
+        plt.show()
+    else:
+        plt.savefig(save_path, bbox_inches='tight', pad_inches=0, format='png')
