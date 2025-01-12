@@ -66,7 +66,7 @@ def process_images(args):
 
     visualize_kpts(resized_img2,
                    kpts2,
-                   color="blue",
+                   color=(0, 0, 255),
                    save_path=args.kpts_img2_path)
 
     print("Keypoints and matches processed successfully!")
@@ -82,7 +82,7 @@ if __name__ == "__main__":
     parser.add_argument("--crop_width", type=int, default=1098, help="Crop width.")
     parser.add_argument("--crop_height", type=int, default=1098, help="Crop height.")
     parser.add_argument("--out_img_size", type=int, default=2000, help="Size for visualization and saving per image.")
-    parser.add_argument("--save_dir", type=str, default="./", help="Directory to save outputs.")
+    parser.add_argument("--save_dir", type=str, default="./", help="Directory to save .npy outputs.")
     parser.add_argument("--match_img_path", type=str, default="./matches.png", help="Path to save matches image.")
     parser.add_argument("--kpts_img1_path", type=str, default="./kpts1.png", help="Path to save kpts image 1.")
     parser.add_argument("--kpts_img2_path", type=str, default="./kpts2.png", help="Path to save kpts image 2.")

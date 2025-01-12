@@ -202,7 +202,8 @@ def plot_matches(kpts0, kpts1, ax, color=None, lw=1.5, ps=4, a=1.0):
         ax1.scatter(kpts1[:, 0], kpts1[:, 1], c=color, s=ps)
 
 
-def visualize_matches(img1, img2, img1_matches, img2_matches, color="lime", lw=0.1, save_path=None):
+def visualize_matches(img1, img2, img1_matches, img2_matches,
+                      color=(57, 255, 20), lw=0.1, save_path=None, thickness=1):
     """
     Visualizes matches for an image pair with separate axes for each image.
     Args:
@@ -213,25 +214,43 @@ def visualize_matches(img1, img2, img1_matches, img2_matches, color="lime", lw=0
         lw: line width for match lines.
         save_path: filename to save the result as PNG.
     """
-    # Create two subplots
-    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(16, 8), dpi=250)
-
-    # Plot the images
-    ax0.imshow(img1)
-    ax1.imshow(img2)
-
-    # Remove axes for a cleaner look
-    ax0.axis('off')
-    ax1.axis('off')
-
-    # Plot matches
-    plot_matches(img1_matches, img2_matches, ax=[ax0, ax1], color=color, lw=lw)
-
-    # Save the figure if a path is specified
     if save_path:
-        plt.savefig(save_path, bbox_inches='tight', pad_inches=0, format='png')
-        print(f"Saved matches to {save_path}")
-    plt.show()
+        concatenated_img = np.hstack((img1, img2))
+        h1, w1, _ = img1.shape
+        h2, w2, _ = img2.shape
+        
+        assert img1_matches.shape == img2_matches.shape
+        
+        for pt1, pt2 in zip(img1_matches, img2_matches):
+            pt1 = tuple(map(int, pt1))
+            pt2 = tuple(map(int, pt2))
+            pt2_shifted = (int(pt2[0] + w1), int(pt2[1]))  # Shift x-coordinate for img2
+
+            cv2.line(concatenated_img, pt1, pt2_shifted, color, thickness)
+        
+        cv2.imwrite(save_path, concatenated_img)
+    else:
+        plotting_width = img1.shape[0]
+        plotting_height = img1.shape[1]
+        dpi = 100  # Adjust DPI to match the resolution
+        figsize = (2 * plotting_width / dpi, plotting_height / dpi)  # 2x width for matches
+
+        # Create figure with exact dimensions
+        fig, (ax0, ax1) = plt.subplots(1, 2, figsize=figsize, dpi=dpi)
+
+        # Plot the images
+        ax0.imshow(img1)
+        ax1.imshow(img2)
+
+        # Remove axes for a cleaner look
+        ax0.axis('off')
+        ax1.axis('off')
+
+        fig.subplots_adjust(wspace=0, hspace=0)
+
+        # Plot matches
+        plot_matches(img1_matches, img2_matches, ax=[ax0, ax1], color=color, lw=lw)
+        plt.show()
 
 
 def save_npy(arrays, filenames, save_dir):
@@ -299,7 +318,7 @@ def lightglue_matcher(
         )
 
         del crp1, crp2
-        
+        print(f"matched pair {pair_index}")
         img_1_matches.append(pair_mkpts0)
         img_2_matches.append(pair_mkpts1)
         
@@ -324,20 +343,27 @@ def lightglue_matcher(
 def visualize_kpts(
     img,
     kpts,
-    color="red",
+    color=(255, 0, 0),
+    radius=2,
+    thickness=1,
     save_path=None
 ):
-
-    plt.figure(figsize=(16, 16), dpi=250)
-    plt.imshow(img)
-    if not save_path:
-        plt.title('Image with keypoints')
-    plt.axis('off')
-    ax = plt.gca()
-    if isinstance(kpts, torch.Tensor):
-        kpts = kpts.cpu().numpy()
-    ax.scatter(kpts[:, 0], kpts[:, 1], c=color, s=4, linewidths=0, alpha=1)
-    if not save_path:
-        plt.show()
+    height, width, _ = img.shape
+    if save_path:
+        for pt in kpts:
+            pt = tuple(map(int, pt))
+            cv2.circle(img, pt, radius, color, thickness)
+        cv2.imwrite(save_path, img)
     else:
-        plt.savefig(save_path, bbox_inches='tight', pad_inches=0, format='png')
+        dpi = 100  # Adjust DPI to match the resolution
+        figsize = (2 * width / dpi, height / dpi)
+        # Create figure with exact dimensions
+        plt.figure(figsize=figsize, dpi=dpi)
+        plt.imshow(img)
+        plt.title('Image with keypoints')
+        plt.axis('off')
+        ax = plt.gca()
+        if isinstance(kpts, torch.Tensor):
+            kpts = kpts.cpu().numpy()
+        ax.scatter(kpts[:, 0], kpts[:, 1], c=color, s=4, linewidths=0, alpha=1)
+        plt.show()
