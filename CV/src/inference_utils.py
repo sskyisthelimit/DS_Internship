@@ -318,7 +318,6 @@ def lightglue_matcher(
         )
 
         del crp1, crp2
-        print(f"matched pair {pair_index}")
         img_1_matches.append(pair_mkpts0)
         img_2_matches.append(pair_mkpts1)
         
