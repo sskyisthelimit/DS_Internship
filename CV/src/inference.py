@@ -23,6 +23,7 @@ def process_images(args):
         path_img_2=args.filepath2,
         matcher=matcher,
         extractor=extractor,
+        do_full_size=args.do_fullsize,
         w=args.width,
         h=args.height,
         n_pair=args.n_pair,
@@ -78,6 +79,7 @@ if __name__ == "__main__":
     parser.add_argument("--filepath2", type=str, required=True, help="Path to the second image file.")
     parser.add_argument("--width", type=int, default=10980, help="Width of the image.")
     parser.add_argument("--height", type=int, default=10980, help="Height of the image.")
+    parser.add_argument("--do_fullsize", type=bool, default=False, help="Set to True if you want do matching without image splitting")
     parser.add_argument("--n_pair", type=int, default=20, help="Number of pairs.")
     parser.add_argument("--crop_width", type=int, default=1098, help="Crop width.")
     parser.add_argument("--crop_height", type=int, default=1098, help="Crop height.")
