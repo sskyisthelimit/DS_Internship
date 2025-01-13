@@ -279,57 +279,76 @@ def load_npy(filenames, save_dir):
 
 def lightglue_matcher(
     path_img_1, path_img_2, matcher,
-    extractor, w, h, n_pair, crp_w, crp_h, device,
-    save_dir, limit_printing=False,
+    extractor,
+    do_full_size=False,
+    w=10980, h=10980,
+    n_pair=20, crp_w=1098, crp_h=1098, device='cpu',
+    save_dir="./", limit_printing=False,
     matches_filenames=["img1_matches.npy", "img2_matches.npy"],
     kpts_filenames=["img_1_kpts.npy", "img_2_kpts.npy"]
 ):
     img1 = load_torch_image(path_img_1, w, h).to(device)
     img2 = load_torch_image(path_img_2, w, h).to(device)
+    
+    if not do_full_size: 
+        crp_1_img = split_image(img1, n_pair)
+        crp_2_img = split_image(img2, n_pair)
 
-    crp_1_img = split_image(img1, n_pair)
-    crp_2_img = split_image(img2, n_pair)
+        dict_keys = list(crp_1_img.keys())
 
-    dict_keys = list(crp_1_img.keys())
+        limit = int(n_pair / 2) ** 2 if not limit_printing else limit_printing
 
-    limit = int(n_pair / 2) ** 2 if not limit_printing else limit_printing
+        # Collect all matches and crop data
+        img_1_matches = []
+        img_2_matches = []
+        img_1_kpts = []
+        img_2_kpts = []
 
-    # Collect all matches and crop data
-    img_1_matches = []
-    img_2_matches = []
-    img_1_kpts = []
-    img_2_kpts = []
+        for pair_index in range(limit):
+            crp1 = crp_1_img[dict_keys[pair_index]]["image"]
+            crp2 = crp_2_img[dict_keys[pair_index]]["image"]
 
-    for pair_index in range(limit):
-        crp1 = crp_1_img[dict_keys[pair_index]]["image"]
-        crp2 = crp_2_img[dict_keys[pair_index]]["image"]
+            pair_mkpts0, pair_mkpts1, kpts0, kpts1 = match_lightglue_crop(
+                crp1,
+                crp2,
+                crp_w,
+                crp_h,
+                matcher,
+                extractor,
+                [crp1.size(-1), crp1.size(-2)],
+                crp_1_img[dict_keys[pair_index]]["coordinates"]["start_w"],
+                crp_1_img[dict_keys[pair_index]]["coordinates"]["start_h"],
+                device,
+            )
 
-        pair_mkpts0, pair_mkpts1, kpts0, kpts1 = match_lightglue_crop(
-            crp1,
-            crp2,
-            crp_w,
-            crp_h,
+            del crp1, crp2
+            img_1_matches.append(pair_mkpts0)
+            img_2_matches.append(pair_mkpts1)
+            
+            img_1_kpts.append(kpts0)
+            img_2_kpts.append(kpts1)
+    else:
+        img_1_matches, img_2_matches, img_1_kpts, img_2_kpts = match_lightglue_crop(
+            img1,
+            img2,
+            w,
+            h,
             matcher,
             extractor,
-            [crp1.size(-1), crp1.size(-2)],
-            crp_1_img[dict_keys[pair_index]]["coordinates"]["start_w"],
-            crp_1_img[dict_keys[pair_index]]["coordinates"]["start_h"],
+            [img1.size(-1), img1.size(-2)],
+            0,
+            0,
             device,
         )
 
-        del crp1, crp2
-        img_1_matches.append(pair_mkpts0)
-        img_2_matches.append(pair_mkpts1)
-        
-        img_1_kpts.append(kpts0)
-        img_2_kpts.append(kpts1)
-
     del img1, img2
-    img_1_matches = np.vstack(img_1_matches)
-    img_2_matches = np.vstack(img_2_matches)
 
-    img_1_kpts = np.vstack(img_1_kpts)
-    img_2_kpts = np.vstack(img_2_kpts)
+    if not do_full_size:
+        img_1_matches = np.vstack(img_1_matches)
+        img_2_matches = np.vstack(img_2_matches)
+
+        img_1_kpts = np.vstack(img_1_kpts)
+        img_2_kpts = np.vstack(img_2_kpts)
     
     save_npy([img_1_matches, img_2_matches],
              matches_filenames,
