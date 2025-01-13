@@ -6,14 +6,14 @@ from inference_utils import (
     lightglue_matcher, visualize_matches
 )
 
-def initialize_models(device):
-    extractor_model = SuperPoint(max_num_keypoints=1500).eval().to(device)
+def initialize_models(device, max_num_keypoints):
+    extractor_model = SuperPoint(max_num_keypoints=max_num_keypoints).eval().to(device)
     matcher_model = LightGlue(features="superpoint").eval().to(device)
     return extractor_model, matcher_model
 
 def process_images(args):
     device = args.device
-    extractor, matcher = initialize_models(device)
+    extractor, matcher = initialize_models(device, args.max_num_keypoints)
 
     matches_filenames = ["img1_matches.npy", "img2_matches.npy"]
     kpts_filenames = ["img_1_kpts.npy", "img_2_kpts.npy"]
@@ -89,6 +89,7 @@ if __name__ == "__main__":
     parser.add_argument("--kpts_img1_path", type=str, default="./kpts1.png", help="Path to save kpts image 1.")
     parser.add_argument("--kpts_img2_path", type=str, default="./kpts2.png", help="Path to save kpts image 2.")
     parser.add_argument("--device", type=str, default="cuda:0", help="Device to use (e.g., 'cuda:0' or 'cpu').")
+    parser.add_argument("--max_num_keypoints", type=int, default=1500, help="Maximal number of keypoints")
     
     args = parser.parse_args()
     process_images(args)
