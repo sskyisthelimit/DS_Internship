@@ -249,7 +249,8 @@ def visualize_matches(img1, img2, img1_matches, img2_matches,
         fig.subplots_adjust(wspace=0, hspace=0)
 
         # Plot matches
-        plot_matches(img1_matches, img2_matches, ax=[ax0, ax1], color=color, lw=lw)
+        plot_matches(img1_matches, img2_matches,
+                     ax=[ax0, ax1], color=zip(color, (1)), lw=lw)
         plt.show()
 
 
