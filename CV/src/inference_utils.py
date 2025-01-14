@@ -250,7 +250,7 @@ def visualize_matches(img1, img2, img1_matches, img2_matches,
 
         # Plot matches
         plot_matches(img1_matches, img2_matches,
-                     ax=[ax0, ax1], color=zip(color, (1)), lw=lw)
+                     ax=[ax0, ax1], color=zip(color, tuple(1)), lw=lw)
         plt.show()
 
 
