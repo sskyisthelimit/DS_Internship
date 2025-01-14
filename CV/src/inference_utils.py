@@ -148,7 +148,7 @@ def match_lightglue_crop(tensor_img1, tensor_img2, new_w, new_h, matcher,
             reposition(kpts1))
 
 
-def plot_matches(kpts0, kpts1, ax, color=None, lw=1.5, ps=4, a=1.0):
+def plot_matches(kpts0, kpts1, ax, color="lime", lw=1.5, ps=4, a=1.0):
     """
     Plot matches on a single axes instance.
     Args:
