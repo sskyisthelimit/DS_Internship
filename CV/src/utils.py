@@ -5,7 +5,6 @@ import time
 
 import cv2
 import torch
-from torch.utils.data import Dataset, DataLoader
 from datetime import datetime, timedelta
 from collections import namedtuple
 from types import MappingProxyType
@@ -339,84 +338,4 @@ def load_torch_image(fname):
     return transform(image)
 
 
-import time
-import torch
-import numpy as np
-
-def evaluate_metrics(extractor, matcher, img1, img2):
-    """Evaluate key metrics for the SuperPoint + LightGlue pipeline."""
-    start_time = time.time()
-
-    feats0 = extractor.extract(img1)
-    feats1 = extractor.extract(img2)
-
-    extraction_time = time.time() - start_time
-
-    start_matching = time.time()
-
-    matches01 = matcher({"image0": feats0, "image1": feats1})
-    matching_time = time.time() - start_matching
-
-    total_time = time.time() - start_time
-
-    matches = matches01["matches"]
-    matching_scores = matches01["scores"]
-    kpts0 = feats0["keypoints"].cpu().numpy()
-    kpts1 = feats1["keypoints"].cpu().numpy()
-
-    matched_kpts0 = kpts0[matches[:, 0]]
-    matched_kpts1 = kpts1[matches[:, 1]]
-
-    # Match Coverage
-    match_coverage_img1 = len(matched_kpts0) / len(kpts0) if len(kpts0) > 0 else 0
-    match_coverage_img2 = len(matched_kpts1) / len(kpts1) if len(kpts1) > 0 else 0
-
-    # Keypoint Displacement
-    displacements = np.linalg.norm(matched_kpts0 - matched_kpts1, axis=1)
-    avg_displacement = np.mean(displacements) if len(displacements) > 0 else 0
-    max_displacement = np.max(displacements) if len(displacements) > 0 else 0
-
-    # Mean Matching Score
-    mean_matching_score = np.mean(matching_scores.cpu().numpy()) if len(matching_scores) > 0 else 0
-
-    # Processing Time
-    metrics = {
-        "match_coverage_img1": match_coverage_img1,
-        "match_coverage_img2": match_coverage_img2,
-        "avg_displacement": avg_displacement,
-        "max_displacement": max_displacement,
-        "mean_matching_score": mean_matching_score,
-        "extraction_time": extraction_time,
-        "matching_time": matching_time,
-        "total_time": total_time,
-        "matches_len": matched_kpts0.shape[0],
-        "kpts0_len": kpts0.shape[0],
-        "kpts1_len": kpts1.shape[0],
-    }
-
-    return metrics
-
-import glob
-import itertools
-
-
-class MatchingDataset(Dataset):
-    def __init__(self, image_folder_path=None,
-                 all_tiles_paths=None):
-        super().__init__()
-        if image_folder_path:
-            all_tiles_paths = []
-            for image_path in glob.iglob(image_folder_path + '**/*.jp2', recursive=True):
-                all_tiles_paths.append(image_path)
-            self.tile_pairs = list(itertools.combinations(all_tiles_paths, 2))
-        elif isinstance(all_tiles_paths, list):
-            self.tile_pairs = list(itertools.combinations(all_tiles_paths, 2))
-        else:
-            raise ValueError("Invalid init parameters")
-    
-    def __len__(self):
-        return len(self.tile_pairs)
-    
-    def __getitem__(self, index):
-        return self.tile_pairs[index]
 
