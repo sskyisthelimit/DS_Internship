@@ -408,9 +408,9 @@ class MatchingDataset(Dataset):
             all_tiles_paths = []
             for image_path in glob.iglob(image_folder_path + '**/*.jp2', recursive=True):
                 all_tiles_paths.append(image_path)
-            self.tile_pairs = itertools.combinations(all_tiles_paths, 2)
+            self.tile_pairs = list(itertools.combinations(all_tiles_paths, 2))
         elif isinstance(all_tiles_paths, list):
-            self.tile_pairs = itertools.combinations(all_tiles_paths, 2)
+            self.tile_pairs = list(itertools.combinations(all_tiles_paths, 2))
         else:
             raise ValueError("Invalid init parameters")
     
