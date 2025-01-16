@@ -25,34 +25,6 @@ def resize_torch_crop(tensor_image, w, h):
     return tensor_image_resized
 
 
-def match_lightglue_crop(tensor_img1, tensor_img2, new_w, new_h, matcher,
-                         extractor, old_size, start_w, start_h, device):
-    cut_img1 = resize_torch_crop(tensor_img1, new_w, new_h)
-    cut_img2 = resize_torch_crop(tensor_img2, new_w, new_h)
-
-    if torch.cuda.is_available():
-        cut_img1 = cut_img1.cuda(device).float()
-        cut_img2 = cut_img2.cuda(device).float()
-
-    with torch.no_grad():
-        feats0, feats1, matches01 = match_pair(
-            extractor, matcher,
-            K.color.rgb_to_grayscale(cut_img1).to(device),
-            K.color.rgb_to_grayscale(cut_img2).to(device),
-            device)
-    
-    kpts0, kpts1, matches = feats0["keypoints"], feats1["keypoints"], matches01["matches"]
-
-    m_kpts0, m_kpts1 = kpts0[matches[..., 0]].cpu().numpy(), kpts1[matches[..., 1]].cpu().numpy()
-    kpts0, kpts1 = kpts0.cpu().numpy(), kpts1.cpu().numpy()
-    reposition = lambda x : x / (new_w / old_size[0], new_h / old_size[1]) + (start_w, start_h)
-    # return (m_kpts0, m_kpts1, kpts0, kpts1)
-    return (reposition(m_kpts0),
-            reposition(m_kpts1),
-            reposition(kpts0),
-            reposition(kpts1))
-
-
 def split_image(image, n, save_crops=False, saving_path=None):
     _, c, h, w = image.size()
     if n % 2 != 0:
@@ -247,7 +219,7 @@ def visualize_matches(img1, img2, img1_matches, img2_matches,
         ax1.axis('off')
 
         fig.subplots_adjust(wspace=0, hspace=0)
-        color = color + tuple([1])
+        color = tuple([c / 256 for c in list(color)])
         # Plot matches
         plot_matches(img1_matches, img2_matches,
                      ax=[ax0, ax1], color=color, lw=lw)
@@ -281,8 +253,8 @@ def load_npy(filenames, save_dir):
 def lightglue_matcher(
     path_img_1, path_img_2, matcher,
     extractor,
-    do_full_size=False,
     w=10980, h=10980,
+    do_full_size=False,
     n_pair=20, crp_w=1098, crp_h=1098, device='cpu',
     save_dir="./", limit_printing=False,
     matches_filenames=["img1_matches.npy", "img2_matches.npy"],
@@ -384,5 +356,7 @@ def visualize_kpts(
         ax = plt.gca()
         if isinstance(kpts, torch.Tensor):
             kpts = kpts.cpu().numpy()
-        ax.scatter(kpts[:, 0], kpts[:, 1], c=color, s=4, linewidths=0, alpha=1)
+        color = tuple([c / 256 for c in list(color)])
+        ax.scatter(kpts[:, 0], kpts[:, 1],
+                   c=color, s=4, linewidths=0, alpha=1)
         plt.show()

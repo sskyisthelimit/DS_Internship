@@ -6,10 +6,22 @@ from inference_utils import (
     lightglue_matcher, visualize_matches
 )
 
+
 def initialize_models(device, max_num_keypoints):
-    extractor_model = SuperPoint(max_num_keypoints=max_num_keypoints).eval().to(device)
-    matcher_model = LightGlue(features="superpoint").eval().to(device)
+    ckpt_path = "../assets/superpoint_official.pth"
+    
+    extractor_model = SuperPoint(max_num_keypoints=max_num_keypoints,
+                                 ckpt_path=ckpt_path).eval().to(device)
+    
+    lg_ckpt_path = "../assets/lightglue_official.pth"
+    
+    matcher_model = LightGlue(
+        features="superpoint",
+        custom=False,
+        ckpt_path=lg_ckpt_path).eval().to(device)
+    
     return extractor_model, matcher_model
+
 
 def process_images(args):
     device = args.device
@@ -63,11 +75,12 @@ def process_images(args):
 
     visualize_kpts(resized_img1,
                    kpts1,
+                   color=(0, 0, 255),   # BGR 
                    save_path=args.kpts_img1_path)
 
     visualize_kpts(resized_img2,
                    kpts2,
-                   color=(0, 0, 255),
+                   color=(0, 0, 255),   # BGR
                    save_path=args.kpts_img2_path)
 
     print("Keypoints and matches processed successfully!")
@@ -77,8 +90,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Inference script for keypoint detection and matching.")
     parser.add_argument("--filepath1", type=str, required=True, help="Path to the first image file.")
     parser.add_argument("--filepath2", type=str, required=True, help="Path to the second image file.")
-    parser.add_argument("--width", type=int, default=10980, help="Width of the image.")
-    parser.add_argument("--height", type=int, default=10980, help="Height of the image.")
+    parser.add_argument("--width", type=int, required=True, help="Width of the image.")
+    parser.add_argument("--height", type=int, required=True, help="Height of the image.")
     parser.add_argument("--do_fullsize", type=bool, default=False, help="Set to True if you want do matching without image splitting")
     parser.add_argument("--n_pair", type=int, default=20, help="Number of pairs.")
     parser.add_argument("--crop_width", type=int, default=1098, help="Crop width.")
