@@ -16,10 +16,10 @@ Ensure you have the following installed:
   pip install -r requirements.txt
   ```
 
-- Step 3 (clone LightGlue and install in editable mode):
+- Step 3 (clone LightGlueTune and install in editable mode):
   ```
-  !git clone --quiet https://github.com/cvg/LightGlue/
-  %cd LightGlue
+  !git clone --quiet git clone --quiet https://github.com/sskyisthelimit/LightGlueTune.git
+  %cd LightGlueTune
   !pip install --progress-bar off --quiet -e .
   ```
 
@@ -45,10 +45,10 @@ The script performs the following steps:
 |----------------------|--------|---------------|-----------------------------------------------------------|
 | `--filepath1`        | string | Required      | Path to the first image file.                             |
 | `--filepath2`        | string | Required      | Path to the second image file.                            |
-| `--width`            | int    | `10980`       | Width of the images.                                      |
-| `--height`           | int    | `10980`       | Height of the images.                                     |
+| `--width`            | int    | Required      | Width of the images.                                      |
+| `--height`           | int    | Required      | Height of the images.                                     |
 | `--do_fullsize`      | bool   | `False`       | Perform matching without image splitting if set to `True`.|
-| `--n_pair`           | int    | `20`          | Number of image pairs.                                    |
+| `--n_pair`           | int    | `20`          | image will be splitted to (n_pair / 2) ** 2 crops.        |
 | `--crop_width`       | int    | `1098`        | Crop width.                                               |
 | `--crop_height`      | int    | `1098`        | Crop height.                                              |
 | `--out_img_size`     | int    | `2000`        | Size for visualizations and saving per image.             |
@@ -69,6 +69,8 @@ Run the script with the following command:
 python3 -m inference \
   --filepath1 path/to/image1.jpg \
   --filepath2 path/to/image2.jpg \
+  --width 10980 \
+  --height 10980 \
   --save_dir ../outputs_example \
   --match_img_path ../outputs_example/matches.png \
   --kpts_img1_path ../outputs_example/kpts1.png \
