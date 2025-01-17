@@ -1,0 +1,13 @@
+{
+    "match_coverage_img1": "0.49568099972956076",
+    "match_coverage_img2": "0.4961697935407635",
+    "avg_displacement": "2.3774096115580026",
+    "max_displacement": "453.24136",
+    "mean_matching_score": "0.8795070353731876",
+    "extraction_time": "5.308014283180237",
+    "matching_time": "4.722797402143478",
+    "total_time": "72.14082486391068",
+    "matches_len": "74139.55",
+    "kpts0_len": "147536.95",
+    "kpts1_len": "146807.235"
+}
