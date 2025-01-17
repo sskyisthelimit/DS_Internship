@@ -17,12 +17,12 @@ from inference_utils import (load_torch_image,
 # (i need manually cd into dir and import modules),
 # so import line below would cause an error
 
-# so to run evaluation you need define same initialize_models and import LightGlue, SuperPoint
-# from inference import initialize_models
+from inference import initialize_models
 
 import collections.abc as collections
 import glob
 import itertools
+import argparse
 
 class MatchingDataset(Dataset):
     def __init__(self, image_folder_path=None,
@@ -37,6 +37,8 @@ class MatchingDataset(Dataset):
             self.tile_pairs = list(itertools.combinations(all_tiles_paths, 2))
         else:
             raise ValueError("Invalid init parameters")
+        # kaggle time limitation 
+        # self.tile_pairs = random.sample(self.tile_pairs, 200)
     
     def __len__(self):
         return len(self.tile_pairs)
@@ -93,8 +95,6 @@ def evaluate_metrics(extractor, matcher, img1, img2, device):
     feats0, feats1, matches01 = [batch_to_device(rbd(x), device) for x in data]
     matching_time = time.time() - start_matching
 
-    total_time = time.time() - start_time
-
     matching_scores = matches01["scores"]
     kpts0, kpts1, matches = feats0["keypoints"], feats1["keypoints"], matches01["matches"]
 
@@ -121,7 +121,7 @@ def evaluate_metrics(extractor, matcher, img1, img2, device):
         "mean_matching_score": mean_matching_score,
         "extraction_time": extraction_time,
         "matching_time": matching_time,
-        "total_time": total_time,
+        "total_time": 0,
         "matches_len": matched_kpts0.shape[0],
         "kpts0_len": kpts0.shape[0],
         "kpts1_len": kpts1.shape[0],
@@ -170,6 +170,7 @@ def eval_on_jp2_tiles(args):
     for batch_idx, (path_img_1, path_img_2) in enumerate(eval_dl):
         print(f"Evaluating pair {batch_idx + 1}/{len(eval_dl)}: {path_img_1[0]} and {path_img_2[0]}")
     
+        start_time = time.time()  # Start timing for the full pair
         img1 = load_torch_image(path_img_1[0], args["width"], args["height"]).to(device)
         img2 = load_torch_image(path_img_2[0], args["width"], args["height"]).to(device)
     
@@ -186,12 +187,13 @@ def eval_on_jp2_tiles(args):
             "match_coverage_img1": 0,
             "match_coverage_img2": 0,
             "avg_displacement_sum": 0,
+            "extraction_time": 0,
+            "matching_time": 0,
             "max_displacement": 0,
             "mean_matching_score_sum": 0,
             "crop_count": 0,
         }
     
-        start_time = time.time()  # Start timing for the full pair
         limit = int(args["n_pair"] / 2) ** 2
 
         for pair_index in range(limit):
@@ -212,6 +214,8 @@ def eval_on_jp2_tiles(args):
     
             # Accumulate metrics for the full pair
             pair_metrics["matches_len"] += metrics["matches_len"]
+            pair_metrics["extraction_time"] += metrics["extraction_time"]
+            pair_metrics["matching_time"] += metrics["matching_time"]
             pair_metrics["kpts0_len"] += metrics["kpts0_len"]
             pair_metrics["kpts1_len"] += metrics["kpts1_len"]
             pair_metrics["match_coverage_img1"] += metrics["match_coverage_img1"]
@@ -247,16 +251,30 @@ def eval_on_jp2_tiles(args):
         macro_metrics["matches_len"].append(pair_metrics["matches_len"])
         macro_metrics["kpts0_len"].append(pair_metrics["kpts0_len"])
         macro_metrics["kpts1_len"].append(pair_metrics["kpts1_len"])
-        macro_metrics["extraction_time"].append(metrics["extraction_time"])  # Keep using per-pair timing
-        macro_metrics["matching_time"].append(metrics["matching_time"])
+        macro_metrics["extraction_time"].append(pair_metrics["extraction_time"])  # Keep using per-pair timing
+        macro_metrics["matching_time"].append(pair_metrics["matching_time"])
         macro_metrics["total_time"].append(total_time)
 
     del img1, img2
    
-    final_macro_metrics = {key: np.mean(values) for key, values in macro_metrics.items()}
+    final_macro_metrics = {key: str(np.mean(values)) for key, values in macro_metrics.items()}
 
     # Save macro metrics as JSON
     save_path = f"{args['save_dir']}/macro_metrics.json"
     with open(save_path, "w") as f:
         json.dump(final_macro_metrics, f, indent=4)
     print(f"Macro metrics saved to {save_path}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Inference script for keypoint detection and matching.")
+    parser.add_argument("--image_folder_path", type=str, required=True, help="Path to the image folder for eval.")
+    parser.add_argument("--width", type=int, required=True, help="Width of the image.")
+    parser.add_argument("--height", type=int, required=True, help="Height of the image.")
+    parser.add_argument("--n_pair", type=int, default=20, help="image will be splitted to (n_pair / 2) ** 2 crops")
+    parser.add_argument("--device", type=str, default="cuda:0", help="Device to use (e.g., 'cuda:0' or 'cpu').")
+    parser.add_argument("--save_dir", type=str, default="./", help="Directory to save .json metrics output.")
+    parser.add_argument("--max_num_keypoints", type=int, default=1500, help="Maximal number of keypoints per crop or for full size")
+    
+    args = parser.parse_args()
+    eval_on_jp2_tiles(args)
