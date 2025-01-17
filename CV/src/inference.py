@@ -93,7 +93,7 @@ if __name__ == "__main__":
     parser.add_argument("--width", type=int, required=True, help="Width of the image.")
     parser.add_argument("--height", type=int, required=True, help="Height of the image.")
     parser.add_argument("--do_fullsize", type=bool, default=False, help="Set to True if you want do matching without image splitting")
-    parser.add_argument("--n_pair", type=int, default=20, help="Number of pairs.")
+    parser.add_argument("--n_pair", type=int, default=20, help="image will be splitted to (n_pair / 2) ** 2 crops")
     parser.add_argument("--crop_width", type=int, default=1098, help="Crop width.")
     parser.add_argument("--crop_height", type=int, default=1098, help="Crop height.")
     parser.add_argument("--out_img_size", type=int, default=2000, help="Size for visualization and saving per image.")
