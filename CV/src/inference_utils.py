@@ -25,7 +25,8 @@ def resize_torch_crop(tensor_image, w, h):
     return tensor_image_resized
 
 
-def split_image(image, n, save_crops=False, saving_path=None):
+def split_image(image, n, padding=6,
+                save_crops=False, saving_path=None):
     _, c, h, w = image.size()
     if n % 2 != 0:
         raise ValueError("N should be an even number")
@@ -44,21 +45,21 @@ def split_image(image, n, save_crops=False, saving_path=None):
 
             # Adjust for top and bottom edges
             if i == 0:  # Top edge
-                end_h += 12
+                end_h += padding * 2
             elif i == n // 2 - 1:  # Bottom edge
-                start_h -= 12
+                start_h -= padding * 2
             else:  # Middle crops
-                start_h -= 6
-                end_h += 6
+                start_h -= padding
+                end_h += padding
 
             # Adjust for left and right edges
             if j == 0:  # Left edge
-                end_w += 12
+                end_w += padding * 2
             elif j == n // 2 - 1:  # Right edge
-                start_w -= 12
+                start_w -= padding * 2
             else:  # Middle crops
-                start_w -= 6
-                end_w += 6
+                start_w -= padding
+                end_w += padding
 
             # Ensure boundaries are valid
             start_h = max(0, start_h)
@@ -258,14 +259,15 @@ def lightglue_matcher(
     n_pair=20, crp_w=1098, crp_h=1098, device='cpu',
     save_dir="./", limit_printing=False,
     matches_filenames=["img1_matches.npy", "img2_matches.npy"],
-    kpts_filenames=["img_1_kpts.npy", "img_2_kpts.npy"]
+    kpts_filenames=["img_1_kpts.npy", "img_2_kpts.npy"],
+    padding=6
 ):
     img1 = load_torch_image(path_img_1, w, h).to(device)
     img2 = load_torch_image(path_img_2, w, h).to(device)
     
     if not do_full_size: 
-        crp_1_img = split_image(img1, n_pair)
-        crp_2_img = split_image(img2, n_pair)
+        crp_1_img = split_image(img1, n_pair, padding)
+        crp_2_img = split_image(img2, n_pair, padding)
 
         dict_keys = list(crp_1_img.keys())
 
