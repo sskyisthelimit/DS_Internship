@@ -11,7 +11,58 @@ from kornia_moons.feature import *
 import torchvision.transforms.functional as F
 import torchvision.transforms as T
 from torchvision.utils import save_image
-from lightglue.utils import match_pair
+import collections.abc as collections
+from typing import Callable
+
+
+def map_tensor(input_, func: Callable):
+    string_classes = (str, bytes)
+    if isinstance(input_, string_classes):
+        return input_
+    elif isinstance(input_, collections.Mapping):
+        return {k: map_tensor(sample, func) for k, sample in input_.items()}
+    elif isinstance(input_, collections.Sequence):
+        return [map_tensor(sample, func) for sample in input_]
+    elif isinstance(input_, torch.Tensor):
+        return func(input_)
+    else:
+        return input_
+
+
+def batch_to_device(batch: dict, device: str = "cpu",
+                    non_blocking: bool = True):
+    """Move batch (dict) to device"""
+
+    def _func(tensor):
+        return tensor.to(device=device, non_blocking=non_blocking).detach()
+
+    return map_tensor(batch, _func)
+
+
+def rbd(data: dict) -> dict:
+    """Remove batch dimension from elements in data"""
+    return {
+        k: v[0] if isinstance(v, (torch.Tensor, np.ndarray, list)) else v
+        for k, v in data.items()
+    }
+
+
+def match_pair(
+    extractor,
+    matcher,
+    image0: torch.Tensor,
+    image1: torch.Tensor,
+    device: str = "cpu",
+    **preprocess,
+):
+    """Match a pair of images (image0, image1) with an extractor and matcher"""
+    feats0 = extractor.extract(image0, **preprocess)
+    feats1 = extractor.extract(image1, **preprocess)
+    matches01 = matcher({"image0": feats0, "image1": feats1})
+    data = [feats0, feats1, matches01]
+    # remove batch dim and move to target device
+    feats0, feats1, matches01 = [batch_to_device(rbd(x), device) for x in data]
+    return feats0, feats1, matches01
 
 
 def load_torch_image(fname, w, h):
